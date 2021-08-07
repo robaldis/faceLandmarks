@@ -25,7 +25,6 @@ class Transform():
         image = TF.crop(image, top, left, height, width)
 
         img_shape = np.array(image).shape
-        print(img_shape)
         landmarks = torch.tensor(landmarks) - torch.tensor([[left, top]])
         landmarks = landmarks / torch.tensor([img_shape[1], img_shape[2]])
 

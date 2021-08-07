@@ -84,9 +84,9 @@ class Network(nn.Module):
         super().__init__()
         self.model_name = 'resnet18'
         # ResNet18 framework to build off of
-        self.model = models.resent18()
+        self.model = models.resnet18()
         # Change the first layer so we can input gray scale images
-        self.model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bais=False)
+        self.model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
         # change the final layer to ouput 136 values (68 * 2, all x, y points)
         self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
 
@@ -96,8 +96,8 @@ class Network(nn.Module):
 
 
 # Helper functions
-def check_first_index(dataset):
-    image, landmarks = dataset[0]
+def check(dataset, index):
+    image, landmarks = dataset[index]
 
     landmarks = (landmarks + 0.5) * 224
 
@@ -112,7 +112,38 @@ def download_dataset():
         os.system("tar -xvzf \'ibug_300W_large_face_landmark_dataset.tar.gz\'")
         os.system("rm -r \'ibug_300W_large_face_landmark_dataset.tar.gz\'")
 
+
+def train(dataset): 
+    batches = torch.utils.data.DataLoader(dataset, batch_size=64, num_workers=4)
+    network = Network()
+    # network.cuda(0
+    critiern = nn.MSELoss()
+    optimizer = optim.Adam(network.parameters(), lr=0.0001)
+    # Things needed to train a machine learning model:
+    # - Run the model a sample
+    # - Calc cost/loss function
+    # - "Backpropigation" / some way of chanigne the wieghts
+
+    for data in batches: 
+        image, landmarks = data
+
+        # x = image.cuda()
+        # y = landmarks.cuda()
+        x = image
+        y = landmarks
+
+        pred = network(x)
+        print(pred)
+        print(y)
+        cost = critiern(pred, y)
+        cost.backwards()
+        optimizer.step()
+        print (f"cost: {cost}")
+
+
 if __name__ == "__main__":
     download_dataset()
     dataset = FaceLandmarkDataset(Transform())
-    check_first_index(dataset)
+    train(dataset)
+
+    # check(dataset, 0)
