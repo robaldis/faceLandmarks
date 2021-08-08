@@ -15,7 +15,8 @@ class Transform():
         image = TF.resize(image, img_size)
         return image, landmarks
 
-    def crop_face(self, image, landmarks, crops):
+    def crop_face(self, image, landmarks, crops, image_path):
+        # TODO: Find out why this line is causing the error
         image = TF.to_tensor(image)
         left = int(crops["left"])
         top = int(crops["top"])
@@ -30,8 +31,8 @@ class Transform():
 
         return image, landmarks
 
-    def __call__(self, image, landmarks, crops):
-        image, landmarks = self.crop_face(image, landmarks, crops)
+    def __call__(self, image, landmarks, crops, image_path):
+        image, landmarks = self.crop_face(image, landmarks, crops, image_path)
         image, landmarks = self.resize(image, landmarks, (224, 224))
 
         return image, landmarks

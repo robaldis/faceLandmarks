@@ -3,6 +3,7 @@
 import time
 import cv2
 import os
+import sys
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -61,16 +62,13 @@ class FaceLandmarkDataset(Dataset):
         return len(self.image_filenames)
 
     def __getitem__(self, index):
-        # TODO: do the transforms to the image to make it the right format
-        # Make a transform class to crop the image by its bounding box,
-        # resize the image
-        # rotate the image
+        # This line is cuasing the error we see when we try to read all
         image = cv2.imread(self.image_filenames[index], 0)
         landmarks = self.landmarks[index]
         crops = self.crops[index]
 
         if (self.transform):
-            image, landmarks = self.transform(image, landmarks, crops)
+            image, landmarks = self.transform(image, landmarks, crops, self.image_filenames[index])
 
         # Makes it easier for the nueral network to train from
         landmarks = landmarks - 0.5
@@ -97,6 +95,17 @@ class Network(nn.Module):
 
 # Helper functions
 def check(dataset, index):
+    count = 0
+    # batches = torch.utils.data.DataLoader(dataset, batch_size=64, num_workers=4)
+    for image, landmarks in dataset:
+        count += 1
+        if image == None:
+            raise ReferenceError()
+        if landmarks == None:
+            raise ReferenceError()
+
+    print(f"checked {count} items")
+
     image, landmarks = dataset[index]
 
     landmarks = (landmarks + 0.5) * 224
@@ -112,38 +121,150 @@ def download_dataset():
         os.system("tar -xvzf \'ibug_300W_large_face_landmark_dataset.tar.gz\'")
         os.system("rm -r \'ibug_300W_large_face_landmark_dataset.tar.gz\'")
 
+def show_prediction(data, network, dataset):
+    valid_loader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=True, num_workers=4)
+    with torch.no_grad(): 
+        network.eval()
+
+        images, landmarks = next(iter(valid_loader))
+
+        images = images.cuda()
+        landmarks = (landmarks + 0.5) * 224
+
+        pred = (network(images).cpu() + 0.5) * 224
+        z = pred.view(-1,68,2)
+
+
+        plt.figure(figsize=(10, 40))
+        plt.imshow(images[0].cpu().numpy().transpose(1,2,0).squeeze(), cmap='gray')
+        plt.scatter(z[0,:, 0], z[0,:, 1], c=[[1,0,0]],  s=8)
+        plt.scatter(landmarks[0,:, 0], landmarks[0,:, 1], c=[[0,1,0]], s=8)
+        plt.show()
+
+
+def print_overwrite(step, total_step, loss, operation):
+    sys.stdout.write('\r')
+    if operation == 'train':
+        sys.stdout.write('Train Steps: %d/%d Loss: %.4f ' % (step, total_step, loss))
+    else:
+        sys.stdout.write('Eval Steps: %d/%d Loss: %.4f ' % (step, total_step, loss))
+
 
 def train(dataset): 
-    batches = torch.utils.data.DataLoader(dataset, batch_size=64, num_workers=4)
-    network = Network()
-    # network.cuda(0
-    critiern = nn.MSELoss()
-    optimizer = optim.Adam(network.parameters(), lr=0.0001)
+
     # Things needed to train a machine learning model:
     # - Run the model a sample
     # - Calc cost/loss function
     # - "Backpropigation" / some way of chanigne the wieghts
 
-    for data in batches: 
-        image, landmarks = data
+    network = Network()
+    network.cuda()
+    critiern = nn.MSELoss()
+    optimizer = optim.Adam(network.parameters(), lr=0.0001)
+    batches = torch.utils.data.DataLoader(dataset, batch_size=64, num_workers=4)
 
-        # x = image.cuda()
-        # y = landmarks.cuda()
-        x = image
-        y = landmarks
+    loss_min = np.inf
+    num_epochs = 10
 
-        pred = network(x)
-        print(pred)
-        print(y)
-        cost = critiern(pred, y)
-        cost.backwards()
-        optimizer.step()
-        print (f"cost: {cost}")
+    for epoch in range(num_epochs):
+        # Need to put the network in training mode
+
+        loss_train = 0
+        loss_eval = 0
+        running_loss = 0
+
+
+
+        network.train()
+        for step in range(len(batches)): 
+            images, landmarks = next(iter(batches))
+
+            x = images.cuda()
+            # I think this flatterns out the landmarks
+            y = landmarks.view(landmarks.size(0), -1).cuda()
+            # x = image
+            # y = landmarks
+
+
+            pred = network(x)
+            # What does this do?
+            optimizer.zero_grad()
+            cost = critiern(pred, y)
+            # What does this do
+            cost.backward()
+            # What does this do?
+            optimizer.step()
+            # print (f"\ncost: {cost}")
+
+
+            loss_train += cost.item()
+            # Average loss over this epoch
+            running_loss = loss_train/(step+1)
+
+            print_overwrite(step, len(batches), running_loss, 'train')
+
+        print(epoch)
+
+        network.eval()
+        with torch.no_grad():
+            # Run over the validation dataset, this means split up the dataset
+            # TODO: Split the dataset into two parts to perform a better eval step
+            for step in range(len(batches)): 
+                images, landmarks = next(iter(batches))
+
+                x = images.cuda()
+                # I think this flatterns out the landmarks
+                y = landmarks.view(landmarks.size(0), -1).cuda()
+                # x = image
+                # y = landmarks
+
+
+                pred = network(x)
+                # What does this do?
+                optimizer.zero_grad()
+                cost_eval = critiern(pred, y)
+                # print(f"\nCost: {cost_eval}")
+
+
+                loss_eval += cost_eval.item()
+                # Average loss over this epoch
+                running_loss = loss_eval/(step+1)
+
+                print_overwrite(step, len(batches), running_loss, 'eval')
+        loss_train /= len(batches)
+        loss_eval /= len(batches)
+
+
+        print('\n' + '-' *20)
+        print('Epoch: {} Train Loss: {:.4f} Eval Loss: {:.4f}'.format(epoch, loss_train, loss_eval))
+        print('\n' + '-' *20)
+
+        if (loss_eval < loss_min):
+                # Update the min loss
+                loss_min = loss_eval
+                # Save the net
+                torch.save(network.state_dict(), 'content/face_landmarks.pth')
+                print('\n Saved a new model\n')
+
+    print("Training Complete")
+    show_prediction(next(iter(batches)), network, dataset)
+
+
+
 
 
 if __name__ == "__main__":
     download_dataset()
     dataset = FaceLandmarkDataset(Transform())
-    train(dataset)
-
     # check(dataset, 0)
+
+    # train(dataset)
+
+
+    batches = torch.utils.data.DataLoader(dataset, batch_size=64, num_workers=4)
+    network = Network()
+    network.cuda()
+    network.load_state_dict(torch.load('content/face_landmarks.pth'))
+    show_prediction(batches, network, dataset)
+
+
