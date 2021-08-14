@@ -1,6 +1,7 @@
 #! env/bin/python3
 
 import time
+import math
 import cv2
 import os
 import sys
@@ -27,6 +28,14 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
 from transform import Transform
+
+
+loss_array = []
+
+# TODO: Refactor all of the code to SoC each major element so they can be tested
+# interchangeably to make sure the transforms are the thing thats making it not 
+# train properly
+# TODO: Clean up all the non-needed code
 
 
 class FaceLandmarkDataset(Dataset):
@@ -127,6 +136,7 @@ def show_prediction(data, network, dataset):
         network.eval()
 
         images, landmarks = next(iter(valid_loader))
+        images, landmarks = data
 
         images = images.cuda()
         landmarks = (landmarks + 0.5) * 224
@@ -139,15 +149,38 @@ def show_prediction(data, network, dataset):
         plt.imshow(images[0].cpu().numpy().transpose(1,2,0).squeeze(), cmap='gray')
         plt.scatter(z[0,:, 0], z[0,:, 1], c=[[1,0,0]],  s=8)
         plt.scatter(landmarks[0,:, 0], landmarks[0,:, 1], c=[[0,1,0]], s=8)
+        plt.figure(2)
+        plt.scatter(loss_array, [x for x in range(1,len(loss_array)+1)], c=[[0,0,1]])
         plt.show()
 
 
-def print_overwrite(step, total_step, loss, operation):
+def print_overwrite(step, total_step, another_loss, loss, operation):
     sys.stdout.write('\r')
     if operation == 'train':
-        sys.stdout.write('Train Steps: %d/%d Loss: %.4f ' % (step, total_step, loss))
+        sys.stdout.write('Train Steps: %d/%d Running Loss: %.4f Loss: %.4f' % (step, total_step, loss, another_loss))
     else:
         sys.stdout.write('Eval Steps: %d/%d Loss: %.4f ' % (step, total_step, loss))
+
+
+def split_dataset(dataset):
+    train = []
+    test = []
+
+    for item in dataset:
+        if (random.random() < 0.8):
+            train.append(item)
+        else:
+            test.append(item)
+
+    print(len(train))
+    print(len(test))
+    train_batches = torch.utils.data.DataLoader(train, batch_size=64, num_workers=4)
+    test_batches = torch.utils.data.DataLoader(test, batch_size=64, num_workers=4)
+    return train_batches, test_batches
+
+
+def save_loss(loss):
+    loss_array.append(loss)
 
 
 def train(dataset): 
@@ -161,7 +194,8 @@ def train(dataset):
     network.cuda()
     critiern = nn.MSELoss()
     optimizer = optim.Adam(network.parameters(), lr=0.0001)
-    batches = torch.utils.data.DataLoader(dataset, batch_size=64, num_workers=4)
+    train_batches, test_batches = split_dataset(dataset)
+
 
     loss_min = np.inf
     num_epochs = 10
@@ -176,8 +210,8 @@ def train(dataset):
 
 
         network.train()
-        for step in range(len(batches)): 
-            images, landmarks = next(iter(batches))
+        for step in range(len(train_batches)): 
+            images, landmarks = next(iter(train_batches))
 
             x = images.cuda()
             # I think this flatterns out the landmarks
@@ -186,31 +220,30 @@ def train(dataset):
             # y = landmarks
 
 
-            pred = network(x)
-            # What does this do?
+            # This resets teh grad values the perameters 
             optimizer.zero_grad()
+
+            pred = network(x)
+            # This calculates loss based on MeanSquaredError(MSE)
             cost = critiern(pred, y)
-            # What does this do
+            # Performs back propigation to train the network
             cost.backward()
-            # What does this do?
+            # updates the weights in the model
             optimizer.step()
-            # print (f"\ncost: {cost}")
 
 
             loss_train += cost.item()
             # Average loss over this epoch
             running_loss = loss_train/(step+1)
+            save_loss(running_loss)
 
-            print_overwrite(step, len(batches), running_loss, 'train')
-
-        print(epoch)
+            print_overwrite(step, len(train_batches), loss_train, running_loss, 'train')
 
         network.eval()
         with torch.no_grad():
             # Run over the validation dataset, this means split up the dataset
-            # TODO: Split the dataset into two parts to perform a better eval step
-            for step in range(len(batches)): 
-                images, landmarks = next(iter(batches))
+            for step in range(len(test_batches)): 
+                images, landmarks = next(iter(test_batches))
 
                 x = images.cuda()
                 # I think this flatterns out the landmarks
@@ -221,18 +254,16 @@ def train(dataset):
 
                 pred = network(x)
                 # What does this do?
-                optimizer.zero_grad()
                 cost_eval = critiern(pred, y)
                 # print(f"\nCost: {cost_eval}")
-
 
                 loss_eval += cost_eval.item()
                 # Average loss over this epoch
                 running_loss = loss_eval/(step+1)
 
-                print_overwrite(step, len(batches), running_loss, 'eval')
-        loss_train /= len(batches)
-        loss_eval /= len(batches)
+                print_overwrite(step, len(test_batches), loss_eval, running_loss, 'eval')
+        loss_train /= len(test_batches)
+        loss_eval /= len(test_batches)
 
 
         print('\n' + '-' *20)
@@ -247,7 +278,7 @@ def train(dataset):
                 print('\n Saved a new model\n')
 
     print("Training Complete")
-    show_prediction(next(iter(batches)), network, dataset)
+    show_prediction(next(iter(train_batches)), network, dataset)
 
 
 
@@ -258,13 +289,13 @@ if __name__ == "__main__":
     dataset = FaceLandmarkDataset(Transform())
     # check(dataset, 0)
 
-    # train(dataset)
+    train(dataset)
 
 
-    batches = torch.utils.data.DataLoader(dataset, batch_size=64, num_workers=4)
-    network = Network()
-    network.cuda()
-    network.load_state_dict(torch.load('content/face_landmarks.pth'))
-    show_prediction(batches, network, dataset)
+    # batches = torch.utils.data.DataLoader(dataset, batch_size=64, num_workers=4)
+    # network = Network()
+    # network.cuda()
+    # network.load_state_dict(torch.load('content/face_landmarks.pth'))
+    # show_prediction(batches, network, dataset)
 
 

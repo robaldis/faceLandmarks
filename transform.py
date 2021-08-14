@@ -1,6 +1,11 @@
 import torch
 import torchvision.transforms.functional as TF
 import numpy as np
+import random
+from math import sin, cos, radians
+from PIL import Image
+import imutils
+from skimage import transform
 
 
 # Transform: perform transforms on the dataset image
@@ -11,8 +16,31 @@ class Transform():
     def __init__(self):
         pass
 
+    def rotate(self, image, landmarks, angle):
+        angle = random.uniform(-angle, +angle)
+
+        transformation_matrix = torch.tensor([
+            [+cos(radians(angle)), -sin(radians(angle))], 
+            [+sin(radians(angle)), +cos(radians(angle))]
+        ])
+
+        image = imutils.rotate(np.array(image), angle)
+
+        landmarks = landmarks - 0.5
+        new_landmarks = np.matmul(landmarks, transformation_matrix)
+        new_landmarks = new_landmarks + 0.5
+        return Image.fromarray(image), new_landmarks
+
     def resize(self, image, landmarks, img_size):
         image = TF.resize(image, img_size)
+        return image, landmarks
+
+    def color_jitter(self, image, landmarks):
+        color_jitter = transforms.ColorJitter(brightness=0.3, 
+                                              contrast=0.3,
+                                              saturation=0.3, 
+                                              hue=0.1)
+        image = color_jitter(image)
         return image, landmarks
 
     def crop_face(self, image, landmarks, crops, image_path):
