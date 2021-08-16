@@ -270,12 +270,9 @@ def train(dataset):
         print('Epoch: {} Train Loss: {:.4f} Eval Loss: {:.4f}'.format(epoch, loss_train, loss_eval))
         print('\n' + '-' *20)
 
-        if (loss_eval < loss_min):
-                # Update the min loss
-                loss_min = loss_eval
-                # Save the net
-                torch.save(network.state_dict(), 'content/face_landmarks.pth')
-                print('\n Saved a new model\n')
+        # Save the net
+        torch.save(network.state_dict(), 'content/face_landmarks.pth')
+        print('\n Saved a new model\n')
 
     print("Training Complete")
     show_prediction(next(iter(train_batches)), network, dataset)

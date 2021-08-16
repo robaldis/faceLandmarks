@@ -1,4 +1,5 @@
-#! env/bin/ python3
+#! env/bin/python3
+
 import time
 import cv2
 import os
@@ -12,7 +13,7 @@ import torch.nn as nn
 from torchvision import models
 import torchvision.transforms.functional as TF
 #######################################################################
-image_path = 'ibug_300W_large_face_landmark_dataset/lfpw/testset/image_0239.png'
+image_path = 'ibug_300W_large_face_landmark_dataset/lfpw/trainset/image_0457.png'
 weights_path = 'content/face_landmarks.pth'
 frontal_face_cascade_path = 'haarcascade_frontalface_default.xml'
 #######################################################################
