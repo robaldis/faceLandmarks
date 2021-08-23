@@ -7,6 +7,7 @@ from training.me import train
 from network.me import Network
 from dataobject.me import FaceLandmarksDataset, split_dataset
 from transform.me import Transforms
+import testNetwork
 
 
 dataset = FaceLandmarksDataset(Transforms())
@@ -17,6 +18,6 @@ criterian = nn.MSELoss()
 optimizer = optim.Adam(network.parameters(), lr=0.0001)
 train_loader, valid_loader = split_dataset(dataset)
 
-train(network, criterian, optimizer, train_loader, valid_loader, epoch=50)
+train(network, criterian, optimizer, train_loader, valid_loader, epoch=1)
 
-
+testNetwork.main(Network)
