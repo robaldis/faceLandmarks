@@ -56,17 +56,11 @@ class FaceLandmarksDataset(Dataset):
 
 
 def split_dataset(dataset):
-    train = []
-    test = []
+    len_valid_set = int(0.1*len(dataset))
+    len_train_set = len(dataset) - len_valid_set
 
-    for item in dataset:
-        if (random.random() < 0.9):
-            train.append(item)
-        else:
-            test.append(item)
+    train_dataset , valid_dataset,  = torch.utils.data.random_split(dataset , [len_train_set, len_valid_set])
 
-    print(len(train))
-    print(len(test))
-    train_batches = torch.utils.data.DataLoader(train, batch_size=64, num_workers=4)
-    test_batches = torch.utils.data.DataLoader(test, batch_size=64, num_workers=4)
+    train_batches = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=4)
+    test_batches = torch.utils.data.DataLoader(valid_dataset, batch_size=8, shuffle=True, num_workers=4)
     return train_batches, test_batches

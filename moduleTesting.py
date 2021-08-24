@@ -18,6 +18,6 @@ criterian = nn.MSELoss()
 optimizer = optim.Adam(network.parameters(), lr=0.0001)
 train_loader, valid_loader = split_dataset(dataset)
 
-train(network, criterian, optimizer, train_loader, valid_loader, epoch=1)
+train(network, criterian, optimizer, train_loader, valid_loader, epoch=80)
 
 testNetwork.main(Network)

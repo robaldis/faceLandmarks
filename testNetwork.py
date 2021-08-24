@@ -17,18 +17,18 @@ image_path = 'ibug_300W_large_face_landmark_dataset/lfpw/trainset/image_0457.png
 weights_path = 'content/face_landmarks.pth'
 frontal_face_cascade_path = 'haarcascade_frontalface_default.xml'
 
-def setup():
-    class Network(nn.Module):
-        def __init__(self,num_classes=136):
-            super().__init__()
-            self.model_name='resnet18'
-            self.model=models.resnet18(pretrained=False)
-            self.model.conv1=nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
-            self.model.fc=nn.Linear(self.model.fc.in_features,num_classes)
-            
-        def forward(self, x):
-            y=self.model(x)
-            return y
+class Network(nn.Module):
+    def __init__(self,num_classes=136):
+        super().__init__()
+        self.model_name='resnet18'
+        self.model=models.resnet18(pretrained=False)
+        self.model.conv1=nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.model.fc=nn.Linear(self.model.fc.in_features,num_classes)
+        
+    def forward(self, x):
+        y=self.model(x)
+        return y
+
 
 def main(Network):
     face_cascade = cv2.CascadeClassifier(frontal_face_cascade_path)
@@ -62,10 +62,12 @@ def main(Network):
     plt.figure()
     plt.imshow(display_image)
     for landmarks in all_landmarks:
-        plt.scatter(landmarks[:,0], landmarks[:,1], c = 'c', s = 5)
+        for i, landmark in enumerate(landmarks):
+            print(landmark)
+            plt.scatter(landmark[0], landmark[1], c = 'c', s = 5)
+            plt.annotate(i, (landmark[0], landmark[1]))
 
     plt.show()
 
 if __name__ == "__main__":
-    setup()
-    main()
+    main(Network)

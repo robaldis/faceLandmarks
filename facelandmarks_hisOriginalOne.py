@@ -56,7 +56,7 @@ landmarks = np.array(landmarks)
 plt.figure(figsize=(10,10))
 plt.imshow(mpimg.imread('ibug_300W_large_face_landmark_dataset/helen/trainset/100032540_1.jpg'))
 plt.scatter(landmarks[:,0], landmarks[:,1], s = 5, c = 'g')
-plt.show()
+# plt.show()
 
 """## Create dataset class"""
 
@@ -227,7 +227,7 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(network.parameters(), lr=0.0001)
 
 loss_min = np.inf
-num_epochs = 10
+num_epochs = 20
 
 start_time = time.time()
 for epoch in range(1,num_epochs+1):
@@ -292,7 +292,7 @@ for epoch in range(1,num_epochs+1):
     
     if loss_valid < loss_min:
         loss_min = loss_valid
-        torch.save(network.state_dict(), '/content/face_landmarks.pth') 
+        torch.save(network.state_dict(), 'content/face_landmarks.pth') 
         print("\nMinimum Validation Loss of {:.4f} at epoch {}/{}".format(loss_min, epoch, num_epochs))
         print('Model Saved\n')
      
@@ -307,7 +307,7 @@ with torch.no_grad():
 
     best_network = Network()
     best_network.cuda()
-    best_network.load_state_dict(torch.load('/content/face_landmarks.pth')) 
+    best_network.load_state_dict(torch.load('content/face_landmarks.pth')) 
     best_network.eval()
     
     images, landmarks = next(iter(valid_loader))
@@ -325,6 +325,7 @@ with torch.no_grad():
         plt.imshow(images[img_num].cpu().numpy().transpose(1,2,0).squeeze(), cmap='gray')
         plt.scatter(predictions[img_num,:,0], predictions[img_num,:,1], c = 'r', s = 5)
         plt.scatter(landmarks[img_num,:,0], landmarks[img_num,:,1], c = 'g', s = 5)
+    plt.show()
 
 print('Total number of test images: {}'.format(len(valid_dataset)))
 
