@@ -39,11 +39,20 @@ def main(Network):
     best_network.eval()
 
     image = cv2.imread(image_path)
+    image = cv2.resize(image, [350, 464])
     grayscale_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     display_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     height, width,_ = image.shape
 
+    print(height, width)
+
+    # 464 350
     faces = face_cascade.detectMultiScale(grayscale_image, 1.1, 4)
+
+    moustache = cv2.imread("assets/moustache.png")
+    m_height, m_width, _ = moustache.shape
+    m_height = m_height /10
+    m_width = m_width /10
 
     all_landmarks = []
     for (x, y, w, h) in faces:
@@ -62,11 +71,18 @@ def main(Network):
 
     plt.figure()
     plt.imshow(display_image)
+
+
     for landmarks in all_landmarks:
+        x = np.mean(landmarks[48:,0]) - (m_width/2)
+        y = np.mean(landmarks[48:,1]) - 25
+
+        plt.imshow(moustache, extent=[m_width + x, x, m_height + y, y])
         for i, landmark in enumerate(landmarks):
-            print(landmark)
-            plt.scatter(landmark[0], landmark[1], c = 'c', s = 5)
-            plt.annotate(i, (landmark[0], landmark[1]))
+            if (i > 48):
+                print(landmark)
+                plt.scatter(landmark[0], landmark[1], c = 'c', s = 5)
+                plt.annotate(i, (landmark[0], landmark[1]))
 
     plt.show()
 
