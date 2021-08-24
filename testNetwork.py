@@ -14,6 +14,7 @@ from torchvision import models
 import torchvision.transforms.functional as TF
 
 image_path = 'ibug_300W_large_face_landmark_dataset/lfpw/trainset/image_0457.png'
+image_path = '/home/robert/ownCloud/face.jpg'
 weights_path = 'content/face_landmarks.pth'
 frontal_face_cascade_path = 'haarcascade_frontalface_default.xml'
 
