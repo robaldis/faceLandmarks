@@ -15,6 +15,7 @@ import torchvision.transforms.functional as TF
 
 image_path = 'ibug_300W_large_face_landmark_dataset/lfpw/trainset/image_0457.png'
 image_path = '/home/robert/ownCloud/face.jpg'
+image_path = '/home/robert/ownCloud/face2.jpg'
 weights_path = 'content/face_landmarks.pth'
 frontal_face_cascade_path = 'haarcascade_frontalface_default.xml'
 
@@ -80,7 +81,6 @@ def main(Network):
         plt.imshow(moustache, extent=[m_width + x, x, m_height + y, y])
         for i, landmark in enumerate(landmarks):
             if (i > 48):
-                print(landmark)
                 plt.scatter(landmark[0], landmark[1], c = 'c', s = 5)
                 plt.annotate(i, (landmark[0], landmark[1]))
 
