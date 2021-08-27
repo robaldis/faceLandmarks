@@ -40,11 +40,11 @@ def main():
     if  not cap.isOpened():
         raise IOError("cannot read camera")
 
-    moustache = cv2.imread("assets/moustache.png")
-    m_height, m_width, _ = moustache.shape
-    m_height = m_height /10
-    m_width = m_width /10
+    moustache = cv2.imread("assets/moustache.png", cv2.IMREAD_UNCHANGED)
     moustache = cv2.resize(moustache, (90, 33))
+    m_height, m_width, channels = moustache.shape
+    print(channels)
+    print(m_height, m_width)
 
     
     while True:
@@ -79,7 +79,16 @@ def main():
             # plt.imshow(moustache, extent=[m_width + x, x, m_height + y, y])
             # cv2.imshow("moustache", moustache)
             # cv2.rectangle(frame, (int(x),int(y)), (int(x) + 100, int(y) + 100), (0,255,0), 5)
-            frame[int(y): (int(y) + int(m_height)), int(x):(int(x) + int(m_width))] = moustache
+            alpha_m = moustache[:,:,3] / 255.0
+            alpha_f = 1.0- alpha_m
+            x1 = int(x)
+            x2 = int(x) + int(m_width)
+            y1 = int(y)
+            y2 = int(y) + int(m_height)
+
+            for c in range(0,3):
+
+                frame[y1: y2, x1:x2, c] = (alpha_m * moustache[:,:,c] + alpha_f * frame[y1:y2,x1:x2, c])
 
 
         cv2.imshow("webcam", frame) 
